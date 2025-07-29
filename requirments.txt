@@ -1,0 +1,30 @@
+# Environment & Utils
+python-dotenv
+requests
+pillow
+pytesseract
+pdf2image
+
+# Logging (built-in, no need to install)
+
+# LangChain & LLM
+langchain
+langchain-community
+langchain-openai
+langchain-tavily
+
+# LangGraph
+langgraph
+
+# Vector stores & DB
+pgvector
+psycopg[binary,pool]
+langchain-postgres
+
+# Document processing
+pypdf
+pypdf2
+tiktoken
+
+# Optional but useful
+faiss-cpu
