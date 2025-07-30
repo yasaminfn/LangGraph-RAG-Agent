@@ -32,10 +32,13 @@ formatter = logging.Formatter(  # Define the format of log messages
 file_handler.setFormatter(formatter)  # Attach the formatter to the file handler
 logger.addHandler(file_handler)  # Add the file handler to the logger
 
-from langgraph.checkpoint.memory import MemorySaver
-#memory
-memory = MemorySaver()
+#from langgraph.checkpoint.memory import PostgresSaver
+from langgraph.checkpoint.postgres import PostgresSaver
 
+#memory
+import psycopg
+
+    
 import uuid
 #thread id for each session
 thread_id = str(uuid.uuid4())
@@ -62,9 +65,11 @@ class Agent:
         )
         graph.add_edge("action", "llm")
         graph.set_entry_point("llm")
-        self.graph = graph.compile(checkpointer=memory)
+        self._graph_base = graph
         self.tools = {getattr(t, "__name__", getattr(t, "name", str(t))): t for t in tools}
         self.model = model.bind_tools(tools)
+    def compile(self, memory):
+        self.graph=self._graph_base.compile(checkpointer=memory)
 
     def exists_action(self, state: AgentState):
         result = state['messages'][-1]
@@ -100,23 +105,32 @@ abot = Agent(
 )
 
 
+conn = "postgresql://langgraph:langgraph@localhost:6025/langgraph"
+with PostgresSaver.from_conn_string(conn) as memory:
+    memory.setup()
+    logger.info("Postgres connection established successfully.", extra={"api_path": "postgres_connection"})
+    abot.compile(memory)
 
-while(True):
-    #question
-    query = input("**Please enter your question: ")
+    while True:
+        query = input("**Please enter your question: ")
 
-    if query.lower() == 'exit':
-        logger.info("User exited the chat", extra={"api_path": "user_query"})
-        break
-    
-    logger.info("User entered a question", extra={"api_path": "user_query"})
-    logger.info(f"User query: {query}", extra={"api_path": "user_query"})
-    
-    try:
-        messages = [HumanMessage(content=query)]
-        result = abot.graph.invoke({"messages": messages}, config)
-        print(result['messages'][-1].content)
-        
-    except Exception as e:
-        logger.error(f"Error during chat: {e}", extra={"api_path": "llm_response"})
-        
+        if query.lower() == 'exit':
+            logger.info("User exited the chat", extra={"api_path": "user_query"})
+            break
+
+        logger.info("User entered a question", extra={"api_path": "user_query"})
+        logger.info(f"User query: {query}", extra={"api_path": "user_query"})
+
+        try:
+            messages = [HumanMessage(content=query)]
+            result = abot.graph.invoke({"messages": messages}, config)
+            print(result['messages'][-1].content)
+
+        except psycopg.OperationalError as e:
+            logger.error(f"Postgres connection lost: {e}", extra={"api_path": "llm_response"})
+            print("Postgres connection lost. Please restart the script.")
+            break
+
+        except Exception as e:
+            logger.error(f"Error during chat: {e}", extra={"api_path": "llm_response"})
+            print("An error occurred. Please try again.")
