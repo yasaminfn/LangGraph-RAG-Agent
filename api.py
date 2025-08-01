@@ -22,6 +22,7 @@ logging.basicConfig(
 
 load_dotenv()
 conn = os.getenv("DATABASE_URL")
+
 memory = None
 
 class QueryRequest(BaseModel):
@@ -54,12 +55,16 @@ def shutdown_event():
     exit_stack.close()
     logging.info("Memory connection closed.")
 
+def get_session_id(session_id: str = None):
+    # Generate a new session ID if not provided
+    return session_id or str(uuid.uuid4())
+
 
 @app.post("/chat")
 def chat_endpoint(req: QueryRequest):
         try:
             # Use provided session_id or generate a new one
-            session_id = req.session_id or str(uuid.uuid4())
+            session_id = get_session_id(req.session_id)
             # Define the config including session info
             config = {"configurable": {"thread_id": session_id}}
             # Create message from user query
