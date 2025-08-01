@@ -28,3 +28,7 @@ tiktoken
 
 # Optional but useful
 faiss-cpu
+
+#FastAPI
+fastapi
+uvicorn
