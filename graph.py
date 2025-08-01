@@ -4,7 +4,6 @@ import operator
 from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_openai import ChatOpenAI
 from langchain_tavily import TavilySearch
 from langchain.tools import tool
 from requests import Request, Session
@@ -31,14 +30,11 @@ formatter = logging.Formatter(  # Define the format of log messages
 file_handler.setFormatter(formatter)  # Attach the formatter to the file handler
 logger.addHandler(file_handler)  # Add the file handler to the logger
 
-#from langgraph.checkpoint.memory import PostgresSaver
+
 from langgraph.checkpoint.postgres import PostgresSaver
-
-#memory
 import psycopg
-
-    
 import uuid
+
 #thread id for each session
 thread_id = str(uuid.uuid4())
 config = {"configurable": {"thread_id": thread_id}}
@@ -87,12 +83,15 @@ class Agent:
         for t in tool_calls:
             print(f"Calling: {t}")
             print(f"Arguments: {t['args']}")
-            if not t['name'] in self.tools:      # check for bad tool name from LLM
-                print("\n ....bad tool name....")
-                result = "bad tool name, retry"  # instruct LLM to retry if bad
-            else:
-                result = self.tools[t['name']].invoke(t['args'])
-                print(result)
+            try:
+                if not t['name'] in self.tools:      # check for bad tool name from LLM
+                    print("\n ....bad tool name....")
+                    result = "bad tool name, retry"  # instruct LLM to retry if bad
+                else:
+                    result = self.tools[t['name']].invoke(t['args'])
+                    print(result)
+            except Exception as e:
+                result = f"Tool error: {str(e)}"
             results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
         print("Back to the model!")
         return {'messages': results}
@@ -103,33 +102,34 @@ abot = Agent(
     system="You are a helpful assistant",
 )
 
+# Runs this file only when executed directly, not when imported
+if __name__ == "__main__":
+    conn = "postgresql://langgraph:langgraph@localhost:6025/langgraph"
+    with PostgresSaver.from_conn_string(conn) as memory:
+        memory.setup()
+        logger.info("Postgres connection established successfully.", extra={"api_path": "postgres_connection"})
+        abot.compile(memory)
 
-conn = "postgresql://langgraph:langgraph@localhost:6025/langgraph"
-with PostgresSaver.from_conn_string(conn) as memory:
-    memory.setup()
-    logger.info("Postgres connection established successfully.", extra={"api_path": "postgres_connection"})
-    abot.compile(memory)
+        while True:
+            query = input("**Please enter your question: ")
 
-    while True:
-        query = input("**Please enter your question: ")
+            if query.lower() == 'exit':
+                logger.info("User exited the chat", extra={"api_path": "user_query"})
+                break
 
-        if query.lower() == 'exit':
-            logger.info("User exited the chat", extra={"api_path": "user_query"})
-            break
+            logger.info("User entered a question", extra={"api_path": "user_query"})
+            logger.info(f"User query: {query}", extra={"api_path": "user_query"})
 
-        logger.info("User entered a question", extra={"api_path": "user_query"})
-        logger.info(f"User query: {query}", extra={"api_path": "user_query"})
+            try:
+                messages = [HumanMessage(content=query)]
+                result = abot.graph.invoke({"messages": messages}, config)
+                print(result['messages'][-1].content)
 
-        try:
-            messages = [HumanMessage(content=query)]
-            result = abot.graph.invoke({"messages": messages}, config)
-            print(result['messages'][-1].content)
+            except psycopg.OperationalError as e:
+                logger.error(f"Postgres connection lost: {e}", extra={"api_path": "llm_response"})
+                print("Postgres connection lost. Please restart the script.")
+                break
 
-        except psycopg.OperationalError as e:
-            logger.error(f"Postgres connection lost: {e}", extra={"api_path": "llm_response"})
-            print("Postgres connection lost. Please restart the script.")
-            break
-
-        except Exception as e:
-            logger.error(f"Error during chat: {e}", extra={"api_path": "llm_response"})
-            print("An error occurred. Please try again.")
+            except Exception as e:
+                logger.error(f"Error during chat: {e}", extra={"api_path": "llm_response"})
+                print("An error occurred. Please try again.")
