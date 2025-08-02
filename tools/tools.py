@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 import os
 from dotenv import load_dotenv
 from tools.rag_tool import qa_chain
+import requests
 
 load_dotenv()
 OPENAI_API_KEY=os.getenv("OPENAI_API_KEY")
@@ -50,7 +51,28 @@ def get_price(slug: str) -> str:
       except (ConnectionError, Timeout, TooManyRedirects) as e:
         print(e)
         
-tavily_tool=TavilySearch(max_results=2)
+tavily_tool = TavilySearch(max_results=2)
+
+# Wrap Tavily call to handle errors
+@tool
+def safe_tavily(query: str) -> str:
+   """does a tavily search based on the query
+
+  Args:
+      query (str)
+
+  Returns:
+      str: search results
+  """
+   try:
+      result = tavily_tool.invoke({"query": query})
+      return str(result)
+   except json.JSONDecodeError as e:
+      return f"Tavily JSON error: {e}"
+   except requests.exceptions.RequestException as e:
+      return f"Tavily network error: {e}"
+   except Exception as e:
+      return f"Tavily unknown error: {e}"
 
 @tool
 def rag_qa(query: str) -> str:
@@ -61,7 +83,6 @@ def rag_qa(query: str) -> str:
     Output: answer string
     """
     response = qa_chain.invoke(query)
-    print(response)
     return response["answer"] if "answer" in response else str(response)
   
-TOOLs = [get_price,tavily_tool,rag_qa]
+TOOLs = [get_price,safe_tavily,rag_qa]
