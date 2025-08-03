@@ -5,8 +5,6 @@ pillow
 pytesseract
 pdf2image
 
-# Logging (built-in, no need to install)
-
 # LangChain & LLM
 langchain
 langchain-community
@@ -23,12 +21,15 @@ langchain-postgres
 
 # Document processing
 pypdf
-pypdf2
-tiktoken
+tiktoken>=0.7.0
 
-# Optional but useful
+# Optional
 faiss-cpu
 
-#FastAPI
+# FastAPI & Async
 fastapi
-uvicorn
+pydantic>=2
+uvicorn[standard]
+
+# Streamlit for demo / streaming test
+streamlit

@@ -4,6 +4,7 @@ import operator
 from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_openai import ChatOpenAI
 from langchain_tavily import TavilySearch
 from langchain.tools import tool
 from requests import Request, Session
@@ -11,6 +12,7 @@ from requests.exceptions import ConnectionError, Timeout, TooManyRedirects
 import json #the format we want to retrieve
 import pprint
 from tools.tools import TOOLs
+import asyncio
 
 import logging  # Import Python's built-in logging module
 import os       # Import os module to work with the file system
@@ -33,8 +35,8 @@ logger.addHandler(file_handler)  # Add the file handler to the logger
 
 from langgraph.checkpoint.postgres import PostgresSaver
 import psycopg
-import uuid
 
+import uuid
 #thread id for each session
 thread_id = str(uuid.uuid4())
 config = {"configurable": {"thread_id": thread_id}}
@@ -101,19 +103,19 @@ abot = Agent(
     tools=TOOLs,
     system="You are a helpful assistant",
 )
-
-# Runs this file only when executed directly, not when imported
-if __name__ == "__main__":
+import traceback
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver 
+async def chat_loop():
     conn = "postgresql://langgraph:langgraph@localhost:6025/langgraph"
-    with PostgresSaver.from_conn_string(conn) as memory:
-        memory.setup()
+    async with AsyncPostgresSaver.from_conn_string(conn) as memory:  #async
+        await memory.setup()
         logger.info("Postgres connection established successfully.", extra={"api_path": "postgres_connection"})
         abot.compile(memory)
 
         while True:
             query = input("**Please enter your question: ")
 
-            if query.lower() == 'exit':
+            if query.lower() == "exit":
                 logger.info("User exited the chat", extra={"api_path": "user_query"})
                 break
 
@@ -122,14 +124,19 @@ if __name__ == "__main__":
 
             try:
                 messages = [HumanMessage(content=query)]
-                result = abot.graph.invoke({"messages": messages}, config)
-                print(result['messages'][-1].content)
-
-            except psycopg.OperationalError as e:
-                logger.error(f"Postgres connection lost: {e}", extra={"api_path": "llm_response"})
-                print("Postgres connection lost. Please restart the script.")
-                break
+                async for event in abot.graph.astream_events({"messages": messages}, config):
+                    if event["event"] == "on_chat_model_stream":
+                        print(event["data"]["chunk"].content, end="", flush=True)
+                print()
 
             except Exception as e:
                 logger.error(f"Error during chat: {e}", extra={"api_path": "llm_response"})
-                print("An error occurred. Please try again.")
+                print("An error occurred.")
+
+import platform
+
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # ✅ برای psycopg
+
+if __name__ == "__main__":
+    asyncio.run(chat_loop())
