@@ -5,6 +5,11 @@ import uuid
 
 #page title
 st.title('Chat Streaming')
+
+# --- Initialize session_id in Streamlit state ---
+# This ensures all messages in the same session share the same ID
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4()) # Generate a unique session ID
     
 #input box for user query    
 user_input = st.text_input("Enter your question:", placeholder="Type here...")
