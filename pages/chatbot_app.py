@@ -3,14 +3,15 @@ import requests
 import time
 import uuid
 
-
+# --- If the user is not logged in, show warning and login button ---
 if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
     st.warning("Please log in first.")
-    
-    #log in button
+
+    # Login button (redirect to auth page)
     if st.button("Log in", icon = ":material/login:" ):
         st.switch_page("auth_app.py") 
-        
+    
+    # Stop rendering the rest of the page    
     st.stop()    
     
 # --- Top bar: Title + Logout button ---
@@ -19,13 +20,13 @@ with col1:
     #page title
     st.title('AI Chat Assistant')
 with col2:
-    #log out button
+    # Logout button
     if st.session_state.get("logged_in", False): 
         if st.button("Logout", icon = ":material/account_circle_off:" ):
             for key in ["access_token", "token_type", "logged_in", "session_id"]:
                 if key in st.session_state:
                     del st.session_state[key]
-            st.rerun()
+            st.rerun() # Refresh page after logout
 
 # --- Initialize session_id in Streamlit state ---
 # This ensures all messages in the same session share the same ID
