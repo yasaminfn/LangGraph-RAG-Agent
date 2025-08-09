@@ -6,13 +6,18 @@ import uuid
 
 if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
     st.warning("Please log in first.")
-    st.stop()
+    
+    #log in button
+    if st.button("Log in", icon = ":material/login:" ):
+        st.switch_page("auth_app.py") 
+        
+    st.stop()    
     
 # --- Top bar: Title + Logout button ---
 col1, col2 = st.columns([5, 1])
 with col1:
     #page title
-    st.title('Chat Streaming')
+    st.title('AI Chat Assistant')
 with col2:
     #log out button
     if st.session_state.get("logged_in", False): 
