@@ -77,7 +77,7 @@ with tab_login:
                             st.session_state["token_type"] = data.get("token_type", "bearer")
                             st.session_state["logged_in"] = True
                             st.success("Logged in successfully!")
-                            st.switch_page("pages/chatbot.py") 
+                            st.switch_page("pages/chatbot_app.py") 
                     else:
                         st.error(f"Login failed ({res.status_code}): {res.text}")
                         
