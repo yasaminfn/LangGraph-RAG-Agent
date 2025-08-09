@@ -3,12 +3,24 @@ import requests
 import time
 import uuid
 
-#page title
-st.title('Chat Streaming')
 
 if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
     st.warning("Please log in first.")
     st.stop()
+    
+# --- Top bar: Title + Logout button ---
+col1, col2 = st.columns([5, 1])
+with col1:
+    #page title
+    st.title('Chat Streaming')
+with col2:
+    #log out button
+    if st.session_state.get("logged_in", False): 
+        if st.button("Logout", icon = ":material/account_circle_off:" ):
+            for key in ["access_token", "token_type", "logged_in", "session_id"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
 
 # --- Initialize session_id in Streamlit state ---
 # This ensures all messages in the same session share the same ID
