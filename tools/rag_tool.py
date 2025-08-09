@@ -68,10 +68,14 @@ POPPLER_PATH = os.getenv("POPPLER_PATH")
 for idx, page_num in enumerate(low_text_pages):
     data_folder = "data"
     img_path = os.path.join(data_folder, f"page_{page_num+1}.png")
-    image = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH, first_page=page_num+1, last_page=page_num+2)[0]
-    image.save(img_path, "PNG") #Saves the image as a PNG file named "page_num+1.png" in the current directory.
-    logger.info(f"Saved page {page_num+1} as image", extra={"api_path": "convert_to_image"})
-    #print(f"Saved page {page_num+1} as image")
+    if not os.path.exists(img_path):
+        image = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH, first_page=page_num+1, last_page=page_num+2)[0]
+        image.save(img_path, "PNG") #Saves the image as a PNG file named "page_num+1.png" in the current directory.
+        logger.info(f"Saved page {page_num+1} as image", extra={"api_path": "convert_to_image"})
+        #print(f"Saved page {page_num+1} as image")
+    else:
+        logger.info(f"Image for page {page_num+1} already exists, skipping save.", extra={"api_path": "convert_to_image"})
+    
 
 import pytesseract
 from PIL import Image
