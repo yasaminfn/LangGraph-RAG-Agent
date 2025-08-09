@@ -5,7 +5,7 @@ import uuid
 
 # --- If the user is not logged in, show warning and login button ---
 if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
-    st.warning("Please log in first.")
+    st.warning("Please login first.")
 
     # Login button (redirect to auth page)
     if st.button("Log in", icon = ":material/login:" ):
