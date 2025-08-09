@@ -6,6 +6,10 @@ import uuid
 #page title
 st.title('Chat Streaming')
 
+if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
+    st.warning("Please log in first.")
+    st.stop()
+
 # --- Initialize session_id in Streamlit state ---
 # This ensures all messages in the same session share the same ID
 if "session_id" not in st.session_state:
@@ -20,11 +24,13 @@ data = {
         "query": user_input,
         "session_id": st.session_state.session_id
     }
-    
+headers = {
+    "Authorization": f"Bearer {st.session_state['access_token']}"
+}   
 placeholder = st.empty() #create an empty space
 
 # --- Send the request and stream the response ---
-r = requests.post(url, json = data, stream=True)
+r = requests.post(url, json = data,headers=headers, stream=True)
 response_text  = ""
 for chunk in r.iter_content(chunk_size=1024):
     if chunk:
