@@ -136,7 +136,7 @@ async def chat_loop():
 import platform
 
 if platform.system() == "Windows":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # ✅ برای psycopg
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # for psycopg
 
 if __name__ == "__main__":
     asyncio.run(chat_loop())
