@@ -2,37 +2,49 @@
 
 An AI-powered **multi-tool agent** built with **LangGraph** and **LangChain**, supporting:
 
-- 🔹 **PDF Question Answering (RAG)** with PostgreSQL + pgvector  
-- 🔹 **OCR** for low-text or image-heavy PDF pages (via Tesseract)  
+- 🔹 **PDF Question Answering (RAG)** with **PostgreSQL + pgvector**  
+- 🔹 **OCR** for low-text or image-heavy PDF pages (via **Tesseract**)  
 - 🔹 **External tools**:  
   - Crypto price fetcher (CoinMarketCap API)  
   - Tavily web search  
+  - Custom RAG QA tool for indexed PDFs  
 - 🔹 **Persistent memory** with PostgreSQL and session management  
-- 🔹 **Structured logging** for debugging and monitoring  
+- 🔹 **JWT authentication + Streamlit UI** (login/signup + streaming chat)  
+- 🔹 **Structured logging** for debugging and monitoring
 
 ---
 
-## 📌 Features
+## 📌 Features (summary)
 
 1. **Multi-Tool Agent**  
-   Uses LangGraph to create an agent capable of handling multiple tools for reasoning and action execution.
+   Uses LangGraph to construct an agent that can call multiple tools (get_price, Tavily search, RAG QA) and handle tool results in a reasoning loop.
 
 2. **RAG for PDFs**  
-   - Extracts text from PDFs using LangChain loaders  
-   - Automatically detects low-text pages and applies OCR  
-   - Stores vector embeddings in PostgreSQL + pgvector  
-   - Enables semantic search and conversational question answering
+   - Load PDF pages via LangChain loaders  
+   - Detect pages with low extracted text, convert to images and OCR them (Tesseract)  
+   - Create documents, split into chunks and index into pgvector in PostgreSQL  
+   - Enable conversational retrieval (ConversationalRetrievalChain)
 
 3. **External Tools**  
-   - **Tavily Search**: Retrieves web search results  
-   - **Crypto Price Fetcher**: Provides real-time cryptocurrency prices via CoinMarketCap API  
+   - **Tavily**: web search integration  
+   - **CoinMarketCap**: crypto price fetching via API  
+   - Custom `rag_qa` tool that queries the RAG index for PDF-based answers
 
 4. **Persistence & Memory**  
-   - Stores conversation history in PostgreSQL for persistence  
-   - Tracks sessions with UUID-based management  
+   - Conversation/session persistence via LangGraph Checkpoints b
 
-5. **Robust Logging and Error Handling**  
-   - Comprehensive logging for debugging and monitoring  
-   - Graceful error handling with automatic recovery  
+```
+├── api.py # FastAPI app (endpoints: /signup, /token, /chat, /chat/stream)
+├── auth.py # Auth logic (SQLAlchemy user model, JWT, password hashing)
+├── auth_app.py # Streamlit login/register page (client)
+├── pages/
+│ └── chatbot.py # Streamlit chat frontend (streams from /chat/stream)
+├── graph.py # async agent wrapper used by api.py (provide abot there)
+├── tools/
+│ ├── tools.py # Tools exposed to the agent (get_price, safe_tavily, rag_qa)
+│ └── rag_tool.py # PDF loading, OCR, chunking, embedding, PGVector setup
+├── requirements.txt # Python deps 
+├── .env # environment variables (not committed)
+└── logs/ # runtime logs
 
----
+```
