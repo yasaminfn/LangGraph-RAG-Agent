@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException,status
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver 
 from fastapi.responses import StreamingResponse
-from asyncgraph import abot
+from graph import abot
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 import logging, os
