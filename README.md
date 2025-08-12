@@ -31,7 +31,21 @@ An AI-powered **multi-tool agent** built with **LangGraph** and **LangChain**, s
    - Custom `rag_qa` tool that queries the RAG index for PDF-based answers
 
 4. **Persistence & Memory**  
-   - Conversation/session persistence via LangGraph Checkpoints b
+   - Conversation/session persistence via LangGraph Checkpoints backed by PostgreSQL (async saver)  
+   - Session IDs tracked via UUID (Streamlit session_state + API support)
+
+5. **Authentication & UI**  
+   - `auth.py`: SQLAlchemy user model, password hashing (bcrypt via `passlib`), JWT token generation/validation  
+   - `auth_app.py` (Streamlit): signup/login UI that stores JWT in session_state  
+   - `pages/chatbot.py` (Streamlit): streaming chat frontend that consumes `/chat/stream`
+
+6. **Logging & Error Handling**  
+   - Structured logging written to `logs/` (e.g. `logs/api.log`, `logs/app.log`)  
+   - Graceful error reporting and helpful log lines (with `api_path` extra metadata)
+
+---
+
+## 📂 Project structure (key files)
 
 ```
 ├── api.py # FastAPI app (endpoints: /signup, /token, /chat, /chat/stream)
