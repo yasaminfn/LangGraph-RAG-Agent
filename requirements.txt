@@ -4,6 +4,7 @@ requests
 pillow
 pytesseract
 pdf2image
+uuid
 
 # LangChain & LLM
 langchain
@@ -17,6 +18,7 @@ langgraph
 # Vector stores & DB
 pgvector
 psycopg[binary,pool]
+psycopg2-binary
 langchain-postgres
 
 # Document processing
@@ -28,8 +30,17 @@ faiss-cpu
 
 # FastAPI & Async
 fastapi
-pydantic>=2
+pydantic[email]>=2
 uvicorn[standard]
+
+# Auth & Security
+passlib[bcrypt]
+bcrypt
+PyJWT
+email-validator
+
+# Database ORM
+sqlalchemy
 
 # Streamlit for demo / streaming test
 streamlit
