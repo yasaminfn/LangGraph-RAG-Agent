@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException,status
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver 
 from fastapi.responses import StreamingResponse
-from graph import abot
+from mcp_custom.client import create_agent_from_session
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 import logging, os
@@ -10,10 +10,11 @@ from dotenv import load_dotenv
 import uuid
 import asyncio
 from typing import Annotated
-
 from fastapi import Depends
 from datetime import timedelta
 from sqlalchemy.orm import Session
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
 # Import authentication and user management functions from the auth module
 from auth import (
     Token,
@@ -28,6 +29,7 @@ from auth import (
 from fastapi.security import OAuth2PasswordRequestForm
 
 app = FastAPI()
+abot = None
 
 # Make sure logs directory exists
 os.makedirs("logs", exist_ok=True)
@@ -52,19 +54,45 @@ class QueryRequest(BaseModel):
 import contextlib
 memory = None
 exit_stack = None
+resources = {}
 
 @app.on_event("startup")
 async def startup_event():
-    global memory, exit_stack
+    global memory, exit_stack, abot, mcp_session_cm
+    await asyncio.sleep(2)  # Delay
+    
+    print("✅ MCP Agent ready in FastAPI")
     try:
         # Initialize connection to async Postgres memory
         cm =AsyncPostgresSaver.from_conn_string(conn)
-        # Keep connection open for the application lifetime, fix the 'connection is closed' Error
+        
+        # Keep connection open for the entire app lifecycle, solving connection closure issues
         exit_stack = contextlib.AsyncExitStack()
+        
         memory = await exit_stack.enter_async_context(cm)  # async context manager
         await memory.setup()
+        
+        # Initialize the MCP client and session
+        mcp_client = MultiServerMCPClient({
+            "MyTools": {
+                "url": "http://127.0.0.1:8000/mcp",
+                "transport": "streamable_http",
+            }
+        })
+        
+        
+        # Open MCP session during startup
+        mcp_session_cm = mcp_client.session("MyTools")
+        resources["mcp_session_cm"] = mcp_session_cm
+        mcp_session = await mcp_session_cm.__aenter__()
+        print(" MCP session opened in startup")
+        
+        #create Agent with mcp session
+        abot = await create_agent_from_session(mcp_session)
+        
         # Compile the agent with the memory
         abot.compile(memory)
+        
         logging.info("Async Postgres memory initialized and agent compiled successfully.")
     except Exception as e:
         logging.error(f"Failed to initialize Async Postgres memory: {e}")
@@ -73,10 +101,17 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     global exit_stack
+    
+    # Close MCP session properly during shutdown
+    if resources.get("mcp_session_cm"):
+        await resources["mcp_session_cm"].__aexit__(None, None, None)
+        logging.info("MCP session closed.")
+        
     # Properly close the async Postgres connection on shutdown
     if exit_stack:
         await exit_stack.aclose()
         logging.info("Async memory connection closed.")
+        
 
 def get_session_id(session_id: str = None):
     # Generate a new session ID if not provided
