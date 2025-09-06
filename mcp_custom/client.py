@@ -1,11 +1,12 @@
-from graph import Agent
+from async_graph import Agent
 from langchain_openai import ChatOpenAI
 from langchain_mcp_adapters.tools import load_mcp_tools
+from sqlalchemy.orm import Session
 
 # Initialize the language model (OpenAI GPT-4o-mini)
 model = ChatOpenAI(model="gpt-4o-mini")
 
-async def create_agent_from_session(session):
+async def create_agent_from_session(session, db: Session, username: str, role: str):
     """
     Create an agent from an existing MCP session.
 
@@ -25,11 +26,22 @@ async def create_agent_from_session(session):
     # Load available tools from the MCP session
     tools = await load_mcp_tools(session)
     print("✅ Tools loaded:", [tool.name for tool in tools])
-    
+      
+    # Filter tools based on role
+    if role == "admin":
+        allowed_tools = tools   #admin
+    else:
+        #user
+        allowed_tool_names = ["get_price"]
+        allowed_tools = [tool for tool in tools if tool.name in allowed_tool_names]
+        
+        print(f"✅ Tools loaded for user {username} (role: {role}): {[tool.name for tool in allowed_tools]}")
+    for tool in allowed_tools:
+        print(f"Tool: {tool.name}")
     # Create an Agent instance with model and tools
     agent = Agent(
         model=model,
-        tools=tools,
+        tools=allowed_tools,
         system="You are a helpful assistant",
     )
     
