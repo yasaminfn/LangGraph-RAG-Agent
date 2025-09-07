@@ -1,6 +1,9 @@
 from mcp.server.fastmcp import FastMCP
 from langchain_tool_to_mcp_adapter import add_langchain_tool_to_server
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 # Import custom  langchain tools
 from tools.tools import TOOLs
 
