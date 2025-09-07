@@ -24,7 +24,11 @@ from auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     create_user,
     UserCreate,
-    get_db
+    get_db,
+    UserInDB,
+    require_role,
+    User,
+    UserDB
 )
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -55,7 +59,7 @@ import contextlib
 memory = None
 exit_stack = None
 resources = {}
-
+        
 @app.on_event("startup")
 async def startup_event():
     global memory, exit_stack, abot, mcp_session_cm
@@ -94,6 +98,20 @@ async def startup_event():
         abot.compile(memory)
         
         logging.info("Async Postgres memory initialized and agent compiled successfully.")
+        
+        
+        # Get database session
+        db = next(get_db())
+        
+        # Ensure admin user exists, create if not
+        admin_email = "admin@test.com"
+        existing_admin = db.query(UserDB).filter(UserDB.email == admin_email).first()
+        if not existing_admin:
+            create_user(db, UserCreate(username="admin", email=admin_email, password="AdminPass", role="admin"))
+            logging.info("✅ Admin user created successfully.")
+        else:
+            logging.info("✅ Admin user already exists.")
+            
     except Exception as e:
         logging.error(f"Failed to initialize Async Postgres memory: {e}")
         raise
@@ -156,7 +174,7 @@ async def login_for_access_token(
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     # Generate a JWT access token containing the username
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": user.username, "role": user.role}, expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")
 
@@ -223,3 +241,7 @@ async def chat_stream(req: QueryRequest, current_user=Depends(get_current_active
 def home(query: str = ""):
     # Basic welcome message or response to a query
     return {"question": query or "Welcome to the API!"}
+
+@app.get("/admin-only")
+async def admin_dashboard(current_user: UserInDB = Depends(require_role("admin"))):
+    return {"message": f"Hello Admin {current_user.username}"}
