@@ -22,12 +22,13 @@ OPENAI_API_KEY=os.getenv("OPENAI_API_KEY")
 TAVILY_API_KEY=os.getenv("TAVILY_API_KEY")
 COINCAP_API_KEY=os.getenv("COINCAP_API_KEY")
 
-
 @tool
 def get_price(slug: str) -> str:
       """Gets the current price of a given cryptocurrency based on a API
         Example input: bitcoin  , output: 118,205.23 USD
       """
+      #print("[DEBUG] get_price called with slug:", slug)
+
       url = 'https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest'
       parameters = {
         'slug': slug,
@@ -45,11 +46,13 @@ def get_price(slug: str) -> str:
         response = session.get(url, params=parameters)
         data = json.loads(response.text)
         slug_id=list(data["data"].keys())[0]
+        #print("[DEBUG] get_price returning result:", response)
         #pprint.pprint(data["data"]["1"]["quote"]["USD"]["price"])
         print(f"price: {data['data'][slug_id]['quote']['USD']['price']} USD")
         return f"price: {data['data'][slug_id]['quote']['USD']['price']} USD"
       except (ConnectionError, Timeout, TooManyRedirects) as e:
         print(e)
+        
         
 tavily_tool = TavilySearch(max_results=2)
 
@@ -86,3 +89,7 @@ def rag_qa(query: str) -> str:
     return response["answer"] if "answer" in response else str(response)
   
 TOOLs = [get_price,safe_tavily,rag_qa]
+
+"""if __name__ == "__main__":
+    result = get_price_tool.invoke({"slug": "bitcoin"})
+    print(result)"""
